@@ -1,0 +1,166 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Introdunction:
+Here we first work on the data called Job_Satisfaction. This data set have four columns namely- Job_Satisfaction(Coded as 0 and 1: 0 for not satisfied and 1 for satisfied). The first column is dichotomous or binary in nature.The second column gives the income of the person. It is a numerical column. The third column is also a numerical column called Expenditure. The second and third column is continuous in nature. The fourth column contains Years_In_Job in terms of numbers 1,2,3,4. This column is ordinal type qualitative variable.
+
+# Our Goal:
+Here we are to construct a Binary Multiple Logistic Regression Model by using the glm() function.This whole process has three steps. They are-
+
+* First step is to understand the data very well.
+* Second step is changing the data as per requirement.
+* The last step is to construct the glm() function.
+
+# Starting of the project:
+
+### First we install and load required packages for this project
+```{r}
+install.packages("glmtoolbox")
+install.packages("tidyverse")
+install.packages("aod")
+library(dplyr)
+library(glmtoolbox)
+library(aod)
+```
+
+### Reading the Job_Satisfaction.csv file
+```{r}
+data <- as.data.frame(read.csv("Job_Satisfection.csv"))
+```
+
+### Basic data Exploratory works
+* Observing first few rows
+* Observing the structure
+* Getting the summary of the data frame
+* Getting the dimensions
+* Finding standard deviation of columns
+* Getting the column names of the data frame
+```{r}
+# Observing the first few rows of the data frame
+head(data,10)
+```
+```{r}
+# Observing the data structure and type of elements
+str(data)
+```
+```{r}
+# Getting the summary of the data frame
+summary(data)
+```
+```{r}
+# Getting the dimensions of the data frame
+dim(data)
+```
+```{r}
+# Finding the standard deviation of the columns
+round(sapply(data,sd),4)
+```
+
+```{r}
+# Getting the column names of the data frame
+colnames(data)
+```
+
+### By mistake we write the spelling of the first column wrong. To correct this, this should be job_Satisfaction. The code for this job is given below. By using the head()function we confirm that the below code is correctly executed.
+```{r}
+data <- data %>% rename(Job_Satisfaction=Job_Satisfection)
+head(data,5)
+```
+
+### Now we check for any missing values in the data frame
+```{r}
+sum(is.na(data))
+```
+
+### Next we generate cross tabulations to understand pattern in the data set
+```{r}
+table(data$Job_Satisfaction , data$Years_In_Job)
+```
+
+### **Note**:
+We observe that R calculates the standard deviation of each column. This is something we don't need. We need the response variable Job_Satisfaction as categorical variable having two categories "0" and "1". On the other hand we want the column named Yeas_In_Job as an ordinal variable having 4 levels "1","2","3" and "4" respectively. To convert them in categorical variables we use the following lines of codes
+```{r}
+data$Job_Satisfaction <- factor(data$Job_Satisfaction)
+data$Years_In_Job <- factor(data$Years_In_Job , levels = c(1,2,3,4) , ordered=TRUE)
+attach(data)
+```
+
+### Now after converting them into categorical column we check the structure of the data frame again to confoirm that above code is executed properly.
+```{r}
+str(data)
+```
+
+###                      Using the summary function again 
+To check the difference in results before and after converting the column into categorical variable.
+```{r}
+summary(data)
+```
+### **Note**
+Now observe that after converting the first and fourth column into categorical variables the summary function does not give all six characteristics of these columns as previous. Now the summary function only returns the frequencies. It says there are 69 persons that are not job satisfied, 31 persons are job satisfied and so on.
+
+###            Constructing  Binary Multiple Logistic Regression Model
+In this case we consider the Job_Satisfaction as response or dependent variable and the other three columns namely the Income, the Expenditure and Years_In_Job are considered as predictor, exploratory or independent variable.The code given below constructs the model.To build this model we use the glm()function.
+```{r}
+model <- glm(data=data , Job_Satisfaction ~ Income + Expenditure + Years_In_Job,family="binomial")
+summary(model)
+round(coef(model),4)
+```
+###                       Interpretation of the model:
+From the model we can say that,
+* For 1 unit increase in Income,the log odds of being Job satisfied increases by 0.0031   unit with respect to be not job satisfied.
+
+* For 1 unit increase in Expenditure,the log odds of being Job satisfied decreases by     0.0033 unit with respect to be not job satisfied.
+
+* For 1 unit increase in Years_In_Job(2 years , denoted by L),the log odds of being Job   satisfied increases by  15.4800 unit with respect to be not job satisfied.
+
+* For 1 unit increase in Years_In_Job(3 years , denoted by Q),the log odds of being Job   satisfied decreases by  20.7910 unit with respect to be not job satisfied.
+
+* For 1 unit increase in Years_In_Job(4 years , denoted by C),the log odds of being Job   satisfied decreases by  18.7701 unit with respect to be not job satisfied.
+
+
+###                        The Hosmer-Lemeshow test 
+If the P-value is calculated higher than level of significance alpha=0.05, then we conclude that the test is really a goodness of fit test. The code for this test is given as
+```{r}
+hltest(model)
+```
+### **Note**
+The test statistics value is 0. Also the P-values is very less. So the test is not best for goodness of fit test.
+
+###                          Using confint() function
+Now we can find the confidence interval by using the confint() function. Always remember one thing that using confint() function will give the confidence intervals of the coefficients of the estimators, not the log odds
+```{r}
+round(confint(model),4)
+```
+### Using confint.default() function
+This variation of the confint() function is used to find the confidence intervals based on the standard errors of the estimates. The code gives the above understanding.
+```{r}
+round(confint.default(model),4)
+```
+
+###                             Performing wald test
+To perform Wald test we use the function wald.test().It is used to understand the overall effect of the Years_In_job column. The following code performs the test
+```{r}
+wald.test(b = coef(model) , vcov(model) , Terms=4:6)
+```
+### **Note**
+Here Terms = 4:6 means from 4 th variable (Years_In_Job:L) to the 6 th variable (Years_In_Job:C). Here we check the effect of the three Years_In_Job (L,Q and C) with respect to Years_In_Job:C. Here the p-value which we get is 1 and chi-squared value is equal to 4.2e-08. This means they are not statistically significant. 
+
+###                             Generating Odds Ratio
+As we know the Odds ratio is the exponential value of the coefficients of the model we created earlier. To do this we first generate the exponent values of the coefficients
+```{r}
+round(exp(coef(model))
+```
+### Now we generate the Odds ratio along with its confodence interval. To do this we use the following code
+
+```{r}
+exp(cbind(OR = coef(model),confint(model)))
+```
+###                Interpretation of the above code snippet
+
+* For 1 unit increase in Income, the odds of being Job satisfied (versus not being job     satisfied), adjusting for the effects of the other predictor variables increases by a    factor of 1.0030 unit.
+
+* For 1 unit increase in Expenditure , the odds of being Job satisfied (versus not being   job satisfied), adjusting for the effects of the other predictor variables               increases by a    factor of 0.9966 unit.
+
+* Thus we can also interpret the values into meaningful statements.
